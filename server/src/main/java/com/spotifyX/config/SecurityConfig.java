@@ -37,6 +37,8 @@ public class SecurityConfig {
                 // 2. Allow ALL OPTIONS requests (Preflight)
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/tracks/**").permitAll()
+                .requestMatchers("/api/playlists/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

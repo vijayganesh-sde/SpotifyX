@@ -1,130 +1,123 @@
+import React, { useContext } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  TextField,
-  Button,
-  Container,
-  Typography,
-  Box,
-  CssBaseline,
-  Avatar,
-  Grid,
-  Link
-} from '@mui/material';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { TextField, Button, Container, Typography, Box, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { AuthContext } from '../context/AuthContext';
 import API from '../api/axiosConfig';
-const theme = createTheme();
 
-function Register() {
+export default function Register() {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const { setUser } = useContext(AuthContext);
   const navigate = useNavigate();
+
   const handleRegister = async (userData) => {
     try {
-      const response = await API.post('/register', userData);
+      const response = await API.post('/auth/register', userData);
       localStorage.setItem('token', response.data.token);
-      setUser({ email: userData.email }); // Set user context with email
-      navigate('/home'); // Redirect to Home after successful registration
-    }
-    catch(err){
+      setUser({ email: userData.email });
+      navigate('/home');
+    } catch (err) {
+      alert("Wrong attempt! This email or username might already be taken.");
       console.log("Registration Failed");
     }
-  }
-  const onSubmit = (data) => {
-    // data now contains { username, email, password }
-    console.log(data);
-    handleRegister(data);
   };
 
+  const onSubmit = (data) => handleRegister(data);
+
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
-          sx={{
-            marginTop: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-            <LockOutlinedIcon />
-          </Avatar>
-          <Typography component="h1" variant="h5">
-            Sign up
+    <Box sx={{ 
+      minHeight: '100vh', 
+      bgcolor: '#121212', 
+      py: 8, 
+      background: 'linear-gradient(to bottom, #1db95422, #121212)' 
+    }}>
+      <Container maxWidth="xs">
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: 'white', mb: 1, textAlign: 'center' }}>
+            Sign up for free to start listening.
           </Typography>
-          <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ mt: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item width={400}>
-                <TextField
-                  autoComplete="username"
-                  required
-                  fullWidth
-                  id="username"
-                  label="Username"
-                  autoFocus
-                  {...register("username", { required: "Username is required" })}
-                  error={!!errors.username}
-                  helperText={errors.username?.message}
-                />
-              </Grid>
-              <Grid item width={400}>
-                <TextField
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  autoComplete="email"
-                  {...register("email", {
-                    required: "Email is required",
-                    pattern: {
-                      value: /^\S+@\S+$/i,
-                      message: "Invalid email address"
-                    }
-                  })}
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                />
-              </Grid>
-              <Grid item width={400}>
-                <TextField
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type="password"
-                  id="password"
-                  autoComplete="new-password"
-                  {...register("password", { required: "Password is required", minLength: { value: 6, message: "Password must be at least 6 characters" } })}
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                />
-              </Grid>
-            </Grid>
+          
+          <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ mt: 4, width: '100%' }}>
+            
+            <Typography variant="subtitle2" sx={{ color: 'white', mb: 1, fontWeight: 'bold' }}>What's your email?</Typography>
+            <TextField
+              fullWidth
+              placeholder="Enter your email"
+              {...register("email", { 
+                required: "Email is required", 
+                pattern: { value: /^\S+@\S+$/i, message: "Invalid email address" } 
+              })}
+              error={!!errors.email}
+              helperText={errors.email?.message}
+              sx={inputStyles}
+            />
+
+            <Typography variant="subtitle2" sx={{ color: 'white', mt: 3, mb: 1, fontWeight: 'bold' }}>Create a password</Typography>
+            <TextField
+              fullWidth
+              type="password"
+              placeholder="Create a password"
+              {...register("password", { 
+                required: "Password is required", 
+                minLength: { value: 6, message: "Password must be at least 6 characters" } 
+              })}
+              error={!!errors.password}
+              helperText={errors.password?.message}
+              sx={inputStyles}
+            />
+
+            <Typography variant="subtitle2" sx={{ color: 'white', mt: 3, mb: 1, fontWeight: 'bold' }}>What should we call you?</Typography>
+            <TextField
+              fullWidth
+              placeholder="Enter a profile name"
+              {...register("username", { required: "Username is required" })}
+              error={!!errors.username}
+              helperText={errors.username?.message}
+              sx={inputStyles}
+            />
+
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              sx={buttonStyles}
             >
-              Sign Up
+              SIGN UP
             </Button>
-            <Grid container justifyContent="flex-end">
-              <Grid item>
-                <Link href="/login" variant="body2">
-                  Already have an account? Sign in
+
+            <Box sx={{ mt: 4, textAlign: 'center' }}>
+              <Typography sx={{ color: '#b3b3b3', fontSize: '14px' }}>
+                Have an account?{' '}
+                <Link href="/login" sx={{ color: 'white', fontWeight: 'bold', textDecoration: 'none', '&:hover': { color: '#1db954' } }}>
+                  Log in
                 </Link>
-              </Grid>
-            </Grid>
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Container>
-    </ThemeProvider>
+    </Box>
   );
 }
 
-export default Register;
+// Reusing the same styles from Login for consistency
+const inputStyles = {
+    bgcolor: '#121212',
+    '& .MuiOutlinedInput-root': {
+      color: 'white',
+      '& fieldset': { borderColor: '#727272' },
+      '&:hover fieldset': { borderColor: 'white' },
+      '&.Mui-focused fieldset': { borderColor: '#1db954' },
+    },
+    '& .MuiFormHelperText-root': { color: '#f15e6c' }
+};
+
+const buttonStyles = {
+    mt: 4,
+    py: 1.5,
+    borderRadius: '30px',
+    bgcolor: '#1DB954',
+    fontWeight: 'bold',
+    fontSize: '16px',
+    '&:hover': { bgcolor: '#1ed760' }
+};
