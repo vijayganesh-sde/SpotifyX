@@ -1,0 +1,12 @@
+com/spotifyX/utils/JwtUtil.class
+com/spotifyX/SpotifyXApplication.class
+com/spotifyX/controller/HealthController.class
+com/spotifyX/config/SecurityConfig.class
+com/spotifyX/config/JwtAuthenticationFilter.class
+com/spotifyX/controller/AuthController.class
+com/spotifyX/dto/LoginRequest.class
+com/spotifyX/repository/UserRepository.class
+com/spotifyX/entity/User.class
+com/spotifyX/dto/AuthResponse.class
+com/spotifyX/dto/RegisterRequest.class
+com/spotifyX/service/AuthService.class
