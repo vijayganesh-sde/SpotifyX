@@ -21,16 +21,18 @@ export default function Sidebar({ likedCount }) {
         '& .MuiDrawer-paper': { width: 240, bgcolor: '#000', color: '#b3b3b3', borderRight: '1px solid #282828' },
       }}
     >
-      <Box sx={{ p: 3, color: 'white', fontWeight: 'bold', fontSize: '1.5rem' }}>SpotifyX</Box>
+      <Box sx={{ p: 3, color: 'white', fontWeight: 'bold', fontSize: '1.5rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
+        SpotifyX
+      </Box>
       <List>
         {menuItems.map((item) => (
           <ListItem 
-            button 
+            button
             key={item.text} 
             onClick={() => navigate(item.path)}
             sx={{ 
               color: location.pathname === item.path ? 'white' : 'inherit',
-              '&:hover': { color: 'white' }
+              '&:hover': { color: 'white' } , cursor: 'pointer'
             }}
           >
             <ListItemIcon sx={{ color: location.pathname === item.path ? (item.color || 'white') : 'inherit' }}>

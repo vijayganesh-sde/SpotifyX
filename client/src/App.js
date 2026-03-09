@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Box } from '@mui/material';
+
+// API Configuration
+import API from './api/axiosConfig';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -13,116 +16,172 @@ import Sidebar from './components/Sidebar';
 import PlayerBar from './components/PlayerBar';
 import Library from './pages/Library';
 import PlaylistDetail from './pages/PlaylistDetail';
-import API from './api/axiosConfig';
+import Search from './pages/Search';
 
 export default function App() {
-  // 1. Auth State (Replace with your actual logic/localStorage check)
+  // --- 1. AUTHENTICATION STATE ---
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   
-  // 2. Music State
+  // --- 2. GLOBAL MUSIC & PLAYLIST STATE ---
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [playlist, setPlaylist] = useState([]);
-  const [likedSongs, setLikedSongs] = useState([]);
-  const [playlists, setPlaylists] = useState([]);
+  const [currentPlaylist, setCurrentPlaylist] = useState([]); // The list of songs currently in the player
+  const [playlists, setPlaylists] = useState([]); // All playlists from DB (including Liked Songs)
 
-  // 1. Fetch playlists on Load
+  // --- 3. DATABASE SYNC ---
+  // Fetch playlists whenever the user logs in
   useEffect(() => {
-    const fetchPlaylists = async () => {
-      try {
-        const response = await API.get('/playlists');
-        setPlaylists(response.data);
-      } catch (error) {
-        console.error("Failed to fetch playlists:", error);
-      }
-    };
-    fetchPlaylists();
-  }, []);
+    if (isAuthenticated) {
+      fetchPlaylists();
+    }
+  }, [isAuthenticated]);
 
-  // 2. Save new playlist to DB
+  const fetchPlaylists = async () => {
+    try {
+      const response = await API.get('/playlists');
+      setPlaylists(response.data);
+    } catch (error) {
+      console.error("Failed to fetch playlists:", error);
+    }
+  };
+
+  // --- 4. DERIVED STATE (LIKED SONGS) ---
+  // We find the 'Liked Songs' playlist in our array to get the count and the IDs
+  const likedPlaylist = useMemo(() => 
+    playlists.find(p => p.name === "Liked Songs"), 
+  [playlists]);
+
+  const likedIds = useMemo(() => 
+    likedPlaylist ? likedPlaylist.tracks.map(s => s.id) : [], 
+  [likedPlaylist]);
+
+  // --- 5. ACTION HANDLERS ---
   const handleCreatePlaylist = async (name) => {
-    const res = await API.post('/playlists', { name });
-    setPlaylists([...playlists, res.data]);
+    try {
+      const res = await API.post('/playlists', { name });
+      setPlaylists([...playlists, res.data]);
+    } catch (err) {
+      console.error("Error creating playlist:", err);
+    }
   };
 
-  // 3. Add track to playlist in DB
   const addTrackToPlaylist = async (playlistId, trackId) => {
-    await API.post(`/playlists/${playlistId}/add/${trackId}`);
-    // Refresh playlists to show updated counts
-    const res = await API.get('/playlists');
-    setPlaylists(res.data);
+    try {
+      await API.post(`/playlists/${playlistId}/add/${trackId}`);
+      fetchPlaylists(); // Refresh state
+    } catch (err) {
+      console.error("Error adding to playlist:", err);
+    }
   };
 
-  const toggleLike = (song) => {
-    setLikedSongs(prev => prev.find(s => s.id === song.id) 
-      ? prev.filter(s => s.id !== song.id) 
-      : [...prev, song]
-    );
+  const toggleLike = async (song) => {
+  try {
+    console.log("Toggling like for song ID:", song.id);
+    const response = await API.post(`/playlists/toggle-like/${song.id}`);
+    
+    console.log("Response from DB:", response.data);
+    
+    // Refresh playlists immediately
+    const refreshRes = await API.get('/playlists');
+    setPlaylists(refreshRes.data);
+  } catch (err) {
+    // This will tell us if it's a 403 (Security) or 500 (Java Error)
+    console.error("Failed to toggle like. Status:", err.response?.status);
+    console.error("Error Detail:", err.response?.data);
+  }
+};
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
   };
 
   return (
     <Router>
       <Box sx={{ display: 'flex', bgcolor: '#000', minHeight: '100vh', color: 'white' }}>
         
-        {/* Only show Sidebar if logged in */}
-        {isAuthenticated && <Sidebar likedCount={likedSongs.length} onLogout={() => setIsAuthenticated(false)} />}
+        {/* SIDEBAR: Only visible when logged in */}
+        {isAuthenticated && (
+          <Sidebar 
+            likedCount={likedIds.length} 
+            onLogout={handleLogout} 
+          />
+        )}
         
-        <Box sx={{ flexGrow: 1, position: 'relative' }}>
+        <Box component="main" sx={{ flexGrow: 1, position: 'relative', pb: 12 }}>
           <Routes>
-            {/* --- PUBLIC ROUTES --- */}
+            {/* PUBLIC ROUTES */}
             <Route path="/landing" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/" />} />
             <Route path="/login" element={<Login onLoginSuccess={() => setIsAuthenticated(true)} />} />
             <Route path="/register" element={<Register />} />
 
-            {/* --- PRIVATE ROUTES --- */}
+            {/* PRIVATE ROUTES */}
             <Route path="/" element={
               isAuthenticated ? (
                 <Home
                   playlists={playlists}
                   onAddToPlaylist={addTrackToPlaylist} 
-                  onSelect={(song, list) => { setCurrentTrack(song); setPlaylist(list); }} 
-                  likedIds={likedSongs.map(s => s.id)}
+                  onSelect={(song, list) => { setCurrentTrack(song); setCurrentPlaylist(list); }} 
+                  likedIds={likedIds}
                   onToggleLike={toggleLike}
                 />
               ) : <Navigate to="/landing" />
             } />
-
+            <Route path="/search" element={
+                <Search 
+                  playlists={playlists}
+                  onSelect={(song, list) => { setCurrentTrack(song); setPlaylists(list); }} 
+                  likedIds={likedIds}
+                  onToggleLike={toggleLike}
+                  onAddToPlaylist={addTrackToPlaylist}
+                />
+              } />
+            {/* LIKED SONGS: Uses PlaylistDetail with a special flag */}
             <Route path="/collection/tracks" element={
               isAuthenticated ? (
-                <Home 
-                  isLikedView={true} 
-                  likedSongs={likedSongs}
-                  onSelect={(song, list) => { setCurrentTrack(song); setPlaylist(list); }} 
-                  likedIds={likedSongs.map(s => s.id)}
+                <PlaylistDetail 
+                  isLikedView={true}
+                  playlists={playlists}
+                  onSelect={(song, list) => { setCurrentTrack(song); setCurrentPlaylist(list); }} 
+                  likedIds={likedIds}
                   onToggleLike={toggleLike}
+                  onAddToPlaylist={addTrackToPlaylist}
                 />
               ) : <Navigate to="/login" />
             } />
 
             <Route path="/collection/library" element={
-              <Library 
-                playlists={playlists} 
-                onCreatePlaylist={handleCreatePlaylist} 
-                likedCount={likedSongs.length} 
-              />
+              isAuthenticated ? (
+                <Library 
+                  playlists={playlists} 
+                  onCreatePlaylist={handleCreatePlaylist} 
+                  likedCount={likedIds.length} 
+                  likedPlaylistId={likedPlaylist?.id}
+                />
+              ) : <Navigate to="/login" />
             } />
 
             <Route path="/playlist/:id" element={
-              <PlaylistDetail 
-                playlists={playlists}
-                onSelect={(song, list) => { setCurrentTrack(song); setPlaylist(list); }}
-                likedIds={likedSongs.map(s => s.id)}
-                onToggleLike={toggleLike}
-                onAddToPlaylist={addTrackToPlaylist}
-              />
+              isAuthenticated ? (
+                <PlaylistDetail 
+                  playlists={playlists}
+                  onSelect={(song, list) => { setCurrentTrack(song); setCurrentPlaylist(list); }}
+                  likedIds={likedIds}
+                  onToggleLike={toggleLike}
+                  onAddToPlaylist={addTrackToPlaylist}
+                />
+              ) : <Navigate to="/login" />
             } />
+
+            {/* FALLBACK */}
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Box>
 
-        {/* Only show Player if logged in and a track is selected */}
+        {/* PLAYER BAR: Only visible when a track is chosen */}
         {isAuthenticated && currentTrack && (
           <PlayerBar 
             track={currentTrack} 
-            playlist={playlist} 
+            playlist={currentPlaylist} 
             onTrackChange={setCurrentTrack} 
           />
         )}
