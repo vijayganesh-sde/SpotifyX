@@ -19,7 +19,7 @@ export default function Login() {
       const response = await API.post('/auth/login', userData);
       localStorage.setItem('token', response.data.token);
       setUser({ email: userData.email });
-      navigate('/home');
+      window.location.href = '/'; // Force full reload to reset state and redirect to home
     } catch (error) {
       alert("Wrong attempt! Please check your credentials.");
       console.log("Login Failed");

@@ -15,7 +15,7 @@ export default function Register() {
       const response = await API.post('/auth/register', userData);
       localStorage.setItem('token', response.data.token);
       setUser({ email: userData.email });
-      navigate('/home');
+      window.location.href = '/'; // Force full reload to reset state and redirect to home
     } catch (err) {
       alert("Wrong attempt! This email or username might already be taken.");
       console.log("Registration Failed");

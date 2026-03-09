@@ -93,21 +93,49 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
+    alert("Successfully logged out!");
+    window.location.href = '/landing';
   };
 
   return (
     <Router>
-      <Box sx={{ display: 'flex', bgcolor: '#000', minHeight: '100vh', color: 'white' }}>
-        
-        {/* SIDEBAR: Only visible when logged in */}
-        {isAuthenticated && (
-          <Sidebar 
-            likedCount={likedIds.length} 
-            onLogout={handleLogout} 
-          />
-        )}
-        
-        <Box component="main" sx={{ flexGrow: 1, position: 'relative', pb: 12 }}>
+      <Box sx={{ 
+          display: 'flex', 
+          bgcolor: '#000', 
+          height: '100vh', 
+          width: '100vw', 
+          overflow: 'hidden' 
+        }}>
+          
+          {/* 1. SIDEBAR: Stays full height (100vh) and is never covered */}
+          {isAuthenticated && (
+            <Box sx={{ width: 240, flexShrink: 0, height: '100vh', zIndex: 1200 }}>
+              <Sidebar likedCount={likedIds.length} onLogout={handleLogout} />
+            </Box>
+          )}
+  
+      {/* 2. MAIN AREA: Wrapper for Content + Player */}
+      <Box 
+        sx={{ 
+          flexGrow: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          height: '100vh', 
+          position: 'relative',
+          bgcolor: '#121212'
+        }}
+      >
+        {/* SCROLLABLE CONTENT */}
+        <Box 
+          component="main" 
+          sx={{ 
+            flexGrow: 1, 
+            overflowY: 'auto', 
+            p: 3, 
+            // Create space at the bottom so songs aren't hidden by the player
+            pb: currentTrack ? '110px' : '20px' 
+          }}
+        >
           <Routes>
             {/* PUBLIC ROUTES */}
             <Route path="/landing" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/" />} />
@@ -175,16 +203,31 @@ export default function App() {
             {/* FALLBACK */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </Box>
-
-        {/* PLAYER BAR: Only visible when a track is chosen */}
+          </Box>
+         {/* 3. PLAYER BAR: Fixed ONLY to the bottom of the main area */}
         {isAuthenticated && currentTrack && (
-          <PlayerBar 
-            track={currentTrack} 
-            playlist={currentPlaylist} 
-            onTrackChange={setCurrentTrack} 
-          />
-        )}
+  <Box 
+    sx={{ 
+      position: 'fixed', 
+      bottom: 0, 
+      left: 240, // Starts after Sidebar
+      width: 'calc(100% - 240px)', 
+      height: '90px', // Explicit height helps stabilize the layout
+      bgcolor: '#181818',
+      borderTop: '1px solid #282828',
+      zIndex: 1100,
+      display: 'flex', // Forces the internal PlayerBar to behave
+      alignItems: 'center'
+    }}
+  >
+    <PlayerBar 
+      track={currentTrack} 
+      playlist={currentPlaylist} 
+      onTrackChange={setCurrentTrack} 
+    />
+  </Box>
+)}
+        </Box>
       </Box>
     </Router>
   );
