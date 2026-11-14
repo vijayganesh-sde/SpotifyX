@@ -1,14 +1,12 @@
-# GitHub Actions CI/CD to EC2
+# GitHub Actions CI and manual EC2 deployment
 
-The workflow in `.github/workflows/ci-cd.yml` runs backend verification and frontend tests/builds on pull requests and pushes to `main`. A successful push to `main` also deploys the JAR and React static files to the EC2 instance using AWS Systems Manager (SSM), not SSH.
+The workflow in `.github/workflows/ci-cd.yml` runs backend verification and frontend tests/builds on pull requests and pushes to `main`. It creates a `spotifyx-release` artifact containing the application JAR, frontend files, and deployment script. It does not connect to AWS or deploy automatically. No AWS credentials, OIDC provider, S3 bucket, or SSM configuration are needed for GitHub Actions.
 
-## One-time EC2 setup
+## EC2 requirements
 
 The EC2 instance must already have:
 
-- Amazon Linux 2023, Java 21, Nginx, AWS CLI, and the SSM Agent.
-- An instance profile with `AmazonSSMManagedInstanceCore` and permission to read the release prefix from the private deployment S3 bucket.
-- SSM connectivity to AWS (outbound HTTPS, or configured VPC endpoints).
+- Amazon Linux 2023, Java 21, Nginx, `curl`, and `tar`.
 - The `spotifyx` Linux user, `/opt/spotifyx`, `/var/www/spotifyx`, and the `spotifyx.service` systemd unit.
 - Nginx serving `/var/www/spotifyx` and proxying `/api/` to `http://127.0.0.1:8080`.
 - A reachable PostgreSQL database and valid settings in `/etc/spotifyx/spotifyx.env`.
@@ -23,27 +21,29 @@ JWT_SECRET=<random-secret-at-least-32-bytes>
 SPRING_CACHE_TYPE=simple
 ```
 
-Keep this file private (`root:spotifyx`, mode `0640`). Set `SPRING_CACHE_TYPE=redis` only if a reachable Redis service is configured. The workflow never uploads database credentials or the JWT secret.
+Keep this file private (`root:spotifyx`, mode `0640`). Set `SPRING_CACHE_TYPE=redis` only if a reachable Redis service is configured. The release artifact contains application files only, not database credentials or the JWT secret.
 
-## AWS configuration
+## Manually deploy a successful build
 
-1. Create a private S3 bucket for deployment bundles. Enable bucket versioning and block public access.
-2. Ensure the EC2 instance profile can `s3:GetObject` on `arn:aws:s3:::<bucket>/spotifyx/releases/*`.
-3. Configure GitHub Actions OIDC in AWS IAM:
-   - Add the GitHub OIDC provider `https://token.actions.githubusercontent.com` with audience `sts.amazonaws.com`.
-   - Create a role trusted only for this repository's `production` GitHub environment. Use the subject `repo:vijayganesh-sde/SpotifyX:environment:production`.
-   - Grant that role `s3:PutObject` on the release prefix and `ssm:SendCommand` for the `AWS-RunShellScript` document and this EC2 instance. Grant the SSM command-read actions needed to poll deployment status.
-4. In GitHub, create a **production** environment and configure:
-   - Secret `AWS_DEPLOY_ROLE_ARN`: the OIDC role ARN.
-   - Variables `AWS_REGION`, `EC2_INSTANCE_ID`, and `DEPLOY_BUCKET`.
-   - Optionally require a reviewer for production deployments in the environment's protection rules.
+1. In GitHub, open **Actions → CI**, select a successful run for the commit to deploy, and download the `spotifyx-release` artifact. GitHub downloads it as a ZIP file.
+2. Extract the ZIP locally. It contains `spotifyx-release.tar.gz`.
+3. Copy the archive to the EC2 instance (replace the hostname and key path):
 
-The EC2 instance must be online and managed by Systems Manager. The AWS role used by GitHub does not need EC2 SSH access, and the instance does not need inbound SSH open to GitHub-hosted runners.
+   ```sh
+   scp -i /path/to/ec2-key.pem spotifyx-release.tar.gz ec2-user@<EC2-public-DNS>:/tmp/
+   ```
 
-## Deployment behavior
+4. Connect to EC2 and run the deployment script:
 
-The workflow builds the React app with `/api` as its API base URL, packages it with the executable JAR, and uploads a release bundle to the private S3 bucket. It sends an SSM command to the configured instance. `deploy/ec2-deploy.sh` installs the JAR, restarts the systemd service, checks `/api/v1/health`, and restores the previous JAR if the health check fails. After the API is healthy, it copies the frontend files into Nginx's document root and reloads Nginx.
+   ```sh
+   ssh -i /path/to/ec2-key.pem ec2-user@<EC2-public-DNS>
+   mkdir -p /tmp/spotifyx-release
+   tar -xzf /tmp/spotifyx-release.tar.gz -C /tmp/spotifyx-release
+   sudo bash /tmp/spotifyx-release/ec2-deploy.sh /tmp/spotifyx-release
+   ```
 
-To deploy, merge/push to `main` after CI passes. A manual run is also available through **GitHub → Actions → CI/CD → Run workflow** on `main`.
+   The script installs the JAR, restarts the service, checks `/api/v1/health`, and restores the previous JAR if the health check fails. Once the API is healthy, it installs the frontend files and reloads Nginx.
+
+Use an SSH key stored securely on your machine, and restrict the EC2 security group's SSH rule to your current IP. The workflow artifact is retained for seven days; download it before it expires.
 
 Changing `JWT_SECRET` invalidates existing login tokens. Choose a stable secret and keep it only in the EC2 environment file or a secrets manager.
