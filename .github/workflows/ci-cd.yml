@@ -45,15 +45,18 @@ jobs:
         run: mvn --batch-mode --file server/pom.xml verify
 
       - name: Install frontend dependencies
-        run: npm ci --prefix client
+        working-directory: client
+        run: npm ci --legacy-peer-deps=false
 
       - name: Test frontend
-        run: npm --prefix client test -- --watchAll=false --runInBand
+        working-directory: client
+        run: npm test -- --watchAll=false --runInBand
         env:
           CI: "true"
 
       - name: Build frontend
-        run: npm --prefix client run build
+        working-directory: client
+        run: npm run build
         env:
           REACT_APP_API_URL: /api
 
