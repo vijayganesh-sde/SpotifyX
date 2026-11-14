@@ -2,7 +2,9 @@ package com.spotifyX.controller;
 
 import com.spotifyX.entity.Track;
 import com.spotifyX.repository.TrackRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +18,7 @@ public class TrackController {
     private TrackRepository trackRepository;
 
     // This handles EVERYTHING at the base /api/tracks URL
+    @Cacheable(value = "all_songs")
     @GetMapping
     public List<Track> getTracks(
             @RequestParam(required = false) String search,

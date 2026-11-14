@@ -1,5 +1,7 @@
 package com.spotifyX.entity;
 
+import java.io.Serializable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,7 +13,7 @@ import lombok.Data;
 @Entity
 @Table(name = "tracks")
 @Data
-public class Track {
+public class Track implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
