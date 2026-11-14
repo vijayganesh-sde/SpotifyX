@@ -36,6 +36,11 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
+      - name: Pin npm version
+        run: |
+          npm install --global npm@10.8.2
+          npm --version
+
       - name: Test and package backend
         run: mvn --batch-mode --file server/pom.xml verify
 
