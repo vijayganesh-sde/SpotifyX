@@ -1,14 +1,12 @@
 import React, { useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { TextField, Button, Container, Typography, Box, Link } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import API from '../api/axiosConfig';
 
 export default function Register() {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const { setUser } = useContext(AuthContext);
-  const navigate = useNavigate();
 
   const handleRegister = async (userData) => {
     try {

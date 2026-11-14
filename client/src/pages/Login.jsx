@@ -1,12 +1,10 @@
 import React, { useContext, useState } from 'react';
 import { TextField, Button, Typography, Box, Container, Link } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import API from '../api/axiosConfig';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const navigate = useNavigate();
   const { setUser } = useContext(AuthContext);
 
   const handleChange = (e) => {
